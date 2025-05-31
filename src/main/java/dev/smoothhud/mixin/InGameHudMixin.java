@@ -1,11 +1,12 @@
 package dev.smoothhud.mixin;
 
-import dev.smoothhud.ConfigManager;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.player.PlayerEntity;
+import dev.smoothhud.Config;
+import dev.smoothhud.SmoothHudMod;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -14,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(InGameHud.class)
+@Mixin(Gui.class)
 public abstract class InGameHudMixin {
 	@Unique
 	private float currentX = 0;
@@ -22,13 +23,13 @@ public abstract class InGameHudMixin {
 	private long lastTickTime = 0;
 
 	@Inject(
-			method = "renderHotbar",
+			method = "renderItemHotbar",
 			at = @At("HEAD")
 	)
-	private void onRenderHotbar(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-		PlayerEntity player = MinecraftClient.getInstance().player;
+	private void onRenderHotbar(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo ci) {
+		Player player = Minecraft.getInstance().player;
 		if (player != null) {
-			float targetX = player.getInventory().selectedSlot * 20;
+			float targetX = player.getInventory().selected * 20;
 
 			long currentTime = System.currentTimeMillis();
 			float deltaTime = (currentTime - lastTickTime) / 1000f;
@@ -36,17 +37,17 @@ public abstract class InGameHudMixin {
 
 			if (Math.abs(targetX - currentX) > 0.1f) {
 				float diff = targetX - currentX;
-				currentX += diff * deltaTime * ConfigManager.getConfig().speed;
+				currentX += diff * deltaTime * Config.speed;
 			}
 		}
 	}
 
 	@ModifyArgs(
-			method = "renderHotbar",
-			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIII)V", ordinal = 1)
+			method = "renderItemHotbar",
+			at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V", ordinal = 1)
 	)
 	private void mod(Args args) {
-		int baseX = (MinecraftClient.getInstance().getWindow().getScaledWidth() - 182) / 2 - 1;
-		args.set(2, Math.round(baseX + currentX));
+		int baseX = (Minecraft.getInstance().getWindow().getGuiScaledWidth() - 182) / 2 - 1;
+		args.set(1, Math.round(baseX + currentX));
 	}
 }
